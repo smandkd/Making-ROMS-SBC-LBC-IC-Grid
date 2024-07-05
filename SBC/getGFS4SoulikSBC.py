@@ -1,31 +1,6 @@
 # ==================================================================
-# 2018.08.21 00시 부터 240시간 후(10일 후) 예측 자료 다운로드 코드
+# 2018.08.18 00시 부터 2018.08.25 23시 59분까지 예측 자료 다운로드 코드
 # ==================================================================
-#%%
-import sys
-import os 
-from urllib.request import build_opener
-import requests 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-# opener = build_opener()
-
-# filelist = [
-#   'https://data.rda.ucar.edu/ds083.3/2018/201808/gdas1.fnl0p25.2018082100.f06.grib2',
-#   'https://data.rda.ucar.edu/ds083.3/2018/201808/gdas1.fnl0p25.2018082100.f09.grib2'
-# ]
-
-# for file in filelist:
-#     ofile = os.path.basename(file)
-#     sys.stdout.write("downloading " + ofile + " ... ")
-#     sys.stdout.flush()
-#     infile = opener.open(file)
-#     outfile = open(ofile, "wb")
-#     outfile.write(infile.read())
-#     outfile.close()
-#     sys.stdout.write("done\n")
-
 # %%
 """ 
 Python script to download selected files from rda.ucar.edu.
@@ -53,21 +28,15 @@ http.mount("http://", adapter)
 base_url = 'https://data.rda.ucar.edu/ds084.1/2018/20180821/'
 file_prefix = 'gfs.0p25.2018082100.f'
 file_suffix = '.grib2'
-file_numbers = [f'{i:03}' for i in range(0, 385, 3)]
+forecast_hours = [f'{i:03}' for i in range(0, 241, 3)]
 download_dir = '/home/tkdals/pyroms/SBC/GFS/201808/20180821'
-max_retries = 3  # Maximum number of retries for each file
 
-# For downloading gdas
-# base_url = 'https://data.rda.ucar.edu/ds083.3/2018/201808/'
-# file_prefix = 'gdas1.fnl0p25.2018082100.f'
-# file_suffix = '.grib2'
-# file_numbers = [f'{i:02}' for i in range(0, 10, 3)]
-# download_dir = '/home/tkdals/pyroms/SBC/GDAS/201808/201808/'
-
+#%%
 if not os.path.exists(download_dir):
     os.makedirs(download_dir)
 
 def download_file(file_url, local_path):
+    max_retries = 3  # Maximum number of retries for each file
     for attempt in range(max_retries):
         try:
             response = http.get(file_url, stream=True)
@@ -83,13 +52,36 @@ def download_file(file_url, local_path):
             sys.stdout.write(f"failed (attempt {attempt + 1} of {max_retries}): {e}\n")
     return False
 
-for file_number in file_numbers:
-    file_name = f'{file_prefix}{file_number}{file_suffix}'
-    file_url = base_url + file_name
+for hour in ['00', '06', '12', '18']:
+    for forecast_hour in forecast_hours:
+        file_name = f'{file_prefix}{forecast_hour}{file_suffix}'
+        file_url = base_url + file_name
+        local_path = os.path.join(download_dir, file_name)
+
+        if os.path.exists(local_path):
+            sys.stdout.write(f"{file_name} already exists, skipping...\n")
+            continue
+
+        sys.stdout.write(f"downloading {file_name} ... ")
+        sys.stdout.flush()
+
+        if not download_file(file_url, local_path):
+            sys.stdout.write(f"failed to download {file_name}\n")
+# %%
+missing_files = []
+# 예측 시간 파일이 모두 존재하는지 확인
+for forecast_hour in forecast_hours:
+    file_name = f'{file_prefix}{forecast_hour}{file_suffix}'
     local_path = os.path.join(download_dir, file_name)
     
-    sys.stdout.write(f"downloading {file_name} ... ")
-    sys.stdout.flush()
-    
-    if not download_file(file_url, local_path):
-        sys.stdout.write(f"failed to download {file_nam
+    if not os.path.exists(local_path):
+        missing_files.append(file_name)
+
+# 결과 출력
+if not missing_files:
+    print("모든 파일이 성공적으로 다운로드되었습니다.")
+else:
+    print("다음 파일들이 누락되었습니다:")
+    for file in missing_files:
+        print(file)
+# %%

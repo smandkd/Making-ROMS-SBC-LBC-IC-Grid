@@ -1,7 +1,6 @@
 # ====================================================
 # https://rda.ucar.edu/datasets/ds084.1/dataaccess/
 # 요 사이트에서 GFS 데이터 다운 받고 사용. 
-# 
 # ====================================================
 #%%
 import matplotlib.pyplot as plt
@@ -73,27 +72,32 @@ attrGrib = {'long_name':'name','units':'units','step_type':'stepType',
 
 fldROMS = ('Tair', 'Pair', 'Qair', 'Uwind', 'Vwind', 'swrad', 'lwrad_down', 'rain')
 # %%
-dict_path = '/home/tkdals/pyroms/SBC/GFS'
+dict_path = '/home/tkdals/pyroms/SBC/GFS/'
 def getGFS(version, tdate, tau_list, region):
     """
     version: GFSncdc, GFSncep, GFSgdas
     region: {'lat1':-90,'lat2':90,'lon1':0,'lon2':360}
     """
     if version == 'GFSncdc': # '201906/20190601/gfs_4_20190601_1200_0240.grb2'
-        header = 'GFS/{}/gfs_4_{}_%3.3i.grb2'.format(
+        header = dict_path + 'GFS/{}/gfs_4_{}_%3.3i.grb2'.format(
                  tdate.strftime('%Y%m/%Y%m%d'),tdate.strftime('%Y%m%d_%H%M'))
+        print('complete read ' + header)
     elif version == 'GFSncep': # 'gfs.2019060112/gfs.t12z.pgrb2.0p25.f0240'
-        header = 'GFS/gfs.{}/gfs.{}.pgrb2.0p25.f%3.3i'.format(
+        header = dict_path + 'GFS/gfs.{}/gfs.{}.pgrb2.0p25.f%3.3i'.format(
                  tdate.strftime('%Y%m%d%H'),tdate.strftime('t%Hz'))
+        print('complete read ' + header)
     elif version == 'GFSgdas': # 'gdas.20190601/gdas.t12z.pgrb2.0p25.f009'
-        header = 'GDAS/{}/gdas1.fnl0p25.{}.f%2.2i.grib2'.format(
+        header = dict_path + 'GDAS/{}/gdas1.fnl0p25.{}.f%2.2i.grib2'.format(
                  tdate.strftime('%Y%m'),tdate.strftime('%Y%m%d00'))
+        print('complete read ' + header)
     elif version == 'GFSncar':
-        header = 'GFS/{}/gfs.0p25.{}.f%3.3i.grib2'.format(
+        header = dict_path + '{}/gfs.0p25.{}.f%3.3i.grib2'.format(
                  tdate.strftime('%Y%m/%Y%m%d'),tdate.strftime('%Y%m%d00'))
-    else: print('==>Error: incorrect version (%s)'%version); return pd.DataFrame()
+        print('complete read ' + header)
+    else: 
+        print('==>Error: incorrect version (%s)'%version)
+        return pd.DataFrame()
     
-    print('complete read ' + header)
     # create a new GFSraw
     try:
         with grib(header%(tau_list[0])) as grbs:
@@ -171,7 +175,6 @@ def transGFS(GFSraw, time_units='seconds since 2000-01-01 00:00:00'):
     GFStrn['lat'] = (('lat'), GFSraw['lat2d'][:, int(nlon / 2)].data[::-1])  # middle latitude
     GFStrn['lon'] = (('lon'), GFSraw['lon2d'][int(nlat / 2), :].data)  # middle longitude
 
-    
     for v in fldROMS:
         if v == 'Tair': # K -> C
             GFStrn[v] = (('tair_time', 'lat', 'lon'), GFSraw['2t'][:, ::-1, :].data - 273.15)
@@ -247,12 +250,9 @@ def transGFS(GFSraw, time_units='seconds since 2000-01-01 00:00:00'):
 GFSraw = getGFS('GFSncar', date_beg, list(range(0,241,3)), region)
 # ds.to_netcdf('test.nc', 'w', format='NETCDF3_CLASSIC', unlimited_dims=['time',])
 # _=plt.imshow(ds['2t'][0, :, :]) # var[name][t, y, x]
-GFSraw
-#%%
 GFStrn = transGFS(GFSraw)
-#%%
 # save to netcdf format
-roms_gfs = 'roms_gfs_0p25_sbc_%s.nc'%expname
+roms_gfs = '/home/tkdals/pyroms/SBC/' + 'roms_gfs_0p25_sbc_%s.nc'%expname
 time_units = {}
 for tn in ('time', 'tair_time', 'pair_time', 'qair_time', 'wind_time', 'srf_time', 'lrf_time', 'rain_time'):
     time_units[tn] = {'units': 'days since 2000-01-01 00:00:00'}
@@ -261,3 +261,5 @@ GFStrn.to_netcdf(roms_gfs, 'w', format='NETCDF3_CLASSIC', encoding=time_units, u
 print('\n==>Info: creating %s\n'%roms_gfs)
 # _=plt.imshow(dc['Pair'][0, :, :])
 
+
+# %%
